@@ -6,94 +6,69 @@
 <title>กริ๊งๆ 🔔 — Ring Together</title>
 <script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
 <style>
-  :root{
-    --accent:#ffb347;
-    --accent2:#ff7b54;
-    --ok:#43e97b;
-    --bg1:#1a1c2e;
-    --bg2:#2d1b3d;
-  }
+  :root{--accent:#ffb347;--accent2:#ff7b54;--ok:#43e97b;}
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  body{
-    min-height:100vh;
-    display:flex;align-items:center;justify-content:center;
-    padding:20px;
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
     background:radial-gradient(circle at 30% 20%,#2d1b3d 0%,#1a1c2e 55%,#0d0e1a 100%);
-    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
-    color:#fff;user-select:none;overflow-x:hidden;
-  }
-  .card{
-    width:100%;max-width:420px;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:28px;
-    padding:28px 24px 24px;
-    backdrop-filter:blur(20px);
-    -webkit-backdrop-filter:blur(20px);
-    box-shadow:0 20px 60px rgba(0,0,0,.4);
-    text-align:center;
-  }
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;user-select:none;overflow-x:hidden;}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:9999;}
+  #flash.go{animation:strobe .5s steps(1) 3;}
+  @keyframes strobe{0%{opacity:0;}30%{opacity:.85;}60%{opacity:0;}100%{opacity:0;}}
+
+  .card{width:100%;max-width:420px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+    border-radius:28px;padding:28px 24px 24px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center;}
   h1{font-size:26px;font-weight:700;letter-spacing:.5px;}
   .sub{color:rgba(255,255,255,.55);font-size:13px;margin-top:4px;margin-bottom:18px;}
 
-  /* BELL */
   .bell-zone{position:relative;height:220px;display:flex;align-items:center;justify-content:center;}
   .bell-wrap{cursor:pointer;outline:none;transition:transform .08s;position:relative;z-index:2;}
   .bell-wrap:active{transform:scale(.95);}
   .bell-wrap.ring{animation:shake .45s ease;}
   .bell-wrap.ring .glow{opacity:1;}
-  @keyframes shake{
-    0%,100%{transform:rotate(0) scale(1);}
-    15%{transform:rotate(-5deg) scale(1.03);}
-    30%{transform:rotate(5deg) scale(1.03);}
-    45%{transform:rotate(-3deg);}60%{transform:rotate(3deg);}75%{transform:rotate(-1deg);}
-  }
-  .glow{
-    position:absolute;inset:-30px;border-radius:50%;
-    background:radial-gradient(circle,rgba(255,179,71,.5),transparent 65%);
-    opacity:0;transition:opacity .1s;filter:blur(8px);z-index:1;pointer-events:none;
-  }
-  .wave{position:absolute;border:2px solid var(--accent);border-radius:50%;
-    animation:wave .7s ease-out forwards;pointer-events:none;z-index:0;}
+  @keyframes shake{0%,100%{transform:rotate(0) scale(1);}15%{transform:rotate(-5deg) scale(1.03);}
+    30%{transform:rotate(5deg) scale(1.03);}45%{transform:rotate(-3deg);}60%{transform:rotate(3deg);}75%{transform:rotate(-1deg);}}
+  .glow{position:absolute;inset:-30px;border-radius:50%;background:radial-gradient(circle,rgba(255,179,71,.5),transparent 65%);
+    opacity:0;transition:opacity .1s;filter:blur(8px);z-index:1;pointer-events:none;}
+  .wave{position:absolute;border:2px solid var(--accent);border-radius:50%;animation:wave .7s ease-out forwards;pointer-events:none;z-index:0;}
   @keyframes wave{from{width:60px;height:60px;opacity:.6;}to{width:300px;height:300px;opacity:0;}}
 
   .hint{color:rgba(255,255,255,.4);font-size:12px;margin-top:2px;}
   .counter{margin-top:10px;font-size:13px;color:rgba(255,255,255,.55);}
   .counter b{color:var(--accent);font-size:16px;}
 
-  /* SECTIONS */
   .section{margin-top:22px;text-align:left;}
   .label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.45);margin-bottom:10px;font-weight:600;}
 
   .sounds{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .snd{
-    padding:11px 12px;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;
-    background:rgba(255,255,255,.06);border:1.5px solid transparent;transition:.15s;
-    display:flex;align-items:center;gap:8px;color:#fff;
-  }
+  .snd{padding:11px 12px;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.06);
+    border:1.5px solid transparent;transition:.15s;display:flex;align-items:center;gap:8px;color:#fff;}
   .snd:hover{background:rgba(255,255,255,.1);}
   .snd.active{border-color:var(--accent);background:rgba(255,179,71,.14);color:var(--accent);}
   .snd .em{font-size:16px;}
 
   .vol{display:flex;align-items:center;gap:12px;margin-top:14px;}
   .vol span{font-size:14px;}
-  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:5px;border-radius:5px;
-    background:rgba(255,255,255,.18);outline:none;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
-    background:var(--accent);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:5px;border-radius:5px;background:rgba(255,255,255,.18);outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.4);}
   input[type=range]::-moz-range-thumb{width:18px;height:18px;border:none;border-radius:50%;background:var(--accent);cursor:pointer;}
 
-  /* ROOM */
+  .toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;}
+  .tg{padding:11px 12px;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.06);
+    border:1.5px solid transparent;transition:.15s;display:flex;align-items:center;justify-content:space-between;gap:8px;color:rgba(255,255,255,.7);}
+  .tg.on{border-color:var(--ok);background:rgba(67,233,123,.14);color:var(--ok);}
+  .tg.full{grid-column:1 / -1;}
+  .tg .sw{width:34px;height:20px;border-radius:20px;background:rgba(255,255,255,.2);position:relative;transition:.2s;flex-shrink:0;}
+  .tg.on .sw{background:var(--ok);}
+  .tg .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;}
+  .tg.on .sw::after{left:16px;}
+
   .room-row{display:flex;gap:8px;}
-  .room-row input[type=text]{
-    flex:1;padding:12px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.15);
-    background:rgba(0,0,0,.25);color:#fff;font-size:15px;letter-spacing:2px;font-weight:600;text-align:center;
-  }
+  .room-row input[type=text]{flex:1;padding:12px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.15);
+    background:rgba(0,0,0,.25);color:#fff;font-size:15px;letter-spacing:2px;font-weight:600;text-align:center;}
   .room-row input:focus{outline:none;border-color:var(--accent);}
-  .btn{
-    padding:12px 18px;border-radius:14px;border:none;cursor:pointer;font-size:14px;font-weight:700;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#2a1500;transition:.15s;white-space:nowrap;
-  }
+  .btn{padding:12px 18px;border-radius:14px;border:none;cursor:pointer;font-size:14px;font-weight:700;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#2a1500;transition:.15s;white-space:nowrap;}
   .btn:active{transform:scale(.96);}
   .btn.ghost{background:rgba(255,255,255,.1);color:#fff;}
   .status{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:rgba(255,255,255,.6);}
@@ -102,11 +77,11 @@
   .dot.connecting{background:var(--accent);animation:pulse 1s infinite;}
   @keyframes pulse{50%{opacity:.3;}}
   .devices{color:var(--accent);font-weight:700;}
-  .flash{animation:flashbg .5s;}
-  @keyframes flashbg{0%{background:rgba(255,179,71,.25);}100%{background:rgba(255,255,255,.06);}}
+  .note{font-size:11px;color:rgba(255,255,255,.35);margin-top:6px;line-height:1.5;}
 </style>
 </head>
 <body>
+<div id="flash"></div>
 <div class="card" id="card">
   <h1>กริ๊งๆ 🔔</h1>
   <div class="sub">แตะระฆังให้ดัง — หรือชวนเพื่อนเข้าห้องเดียวกันให้ดังพร้อมกัน</div>
@@ -116,17 +91,9 @@
       <div class="glow"></div>
       <svg width="200" height="185" viewBox="0 0 220 200" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="dome" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#f6f6f6"/><stop offset="0.35" stop-color="#dcdcdc"/>
-            <stop offset="0.55" stop-color="#9a9a9a"/><stop offset="0.75" stop-color="#cfcfcf"/>
-            <stop offset="1" stop-color="#8a8a8a"/>
-          </linearGradient>
-          <radialGradient id="base" cx="0.5" cy="0.3" r="0.8">
-            <stop offset="0" stop-color="#444"/><stop offset="1" stop-color="#0a0a0a"/>
-          </radialGradient>
-          <linearGradient id="knob" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#f0f0f0"/><stop offset="0.5" stop-color="#aaa"/><stop offset="1" stop-color="#888"/>
-          </linearGradient>
+          <linearGradient id="dome" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6f6f6"/><stop offset="0.35" stop-color="#dcdcdc"/><stop offset="0.55" stop-color="#9a9a9a"/><stop offset="0.75" stop-color="#cfcfcf"/><stop offset="1" stop-color="#8a8a8a"/></linearGradient>
+          <radialGradient id="base" cx="0.5" cy="0.3" r="0.8"><stop offset="0" stop-color="#444"/><stop offset="1" stop-color="#0a0a0a"/></radialGradient>
+          <linearGradient id="knob" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0f0f0"/><stop offset="0.5" stop-color="#aaa"/><stop offset="1" stop-color="#888"/></linearGradient>
         </defs>
         <ellipse cx="110" cy="178" rx="95" ry="18" fill="url(#base)"/>
         <ellipse cx="110" cy="170" rx="95" ry="18" fill="#1a1a1a"/>
@@ -145,11 +112,13 @@
   <div class="section">
     <div class="label">🔊 เลือกเสียง</div>
     <div class="sounds" id="sounds"></div>
-    <div class="vol">
-      <span>🔈</span>
-      <input type="range" id="vol" min="0" max="100" value="75">
-      <span>🔊</span>
+    <div class="vol"><span>🔈</span><input type="range" id="vol" min="0" max="100" value="75"><span>🔊</span></div>
+    <div class="toggles">
+      <div class="tg on" id="tgFlash"><span>💡 จอกระพริบ</span><span class="sw"></span></div>
+      <div class="tg on" id="tgVib"><span>📳 สั่น</span><span class="sw"></span></div>
+      <div class="tg full" id="tgTorch"><span>🔦 ไฟแฟลชกล้อง (แตะเพื่อขอสิทธิ์)</span><span class="sw"></span></div>
     </div>
+    <div class="note">🔦 ไฟแฟลชใช้ได้บน Android Chrome เท่านั้น • iPhone ไม่รองรับไฟแฟลช/สั่น</div>
   </div>
 
   <div class="section">
@@ -167,171 +136,140 @@
 </div>
 
 <script>
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* ============ SOUND ENGINE ============ */
-let ctx, volume = 0.75;
-function ac(){ if(!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); return ctx; }
-
+let ctx, volume=0.75;
+function ac(){ if(!ctx) ctx=new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); return ctx; }
 function tone(freq,start,dur,type='sine',peak=0.3){
-  const c=ac(), t=c.currentTime+start;
-  const o=c.createOscillator(), g=c.createGain();
-  o.type=type; o.frequency.value=freq;
-  g.gain.setValueAtTime(0.0001,t);
-  g.gain.exponentialRampToValueAtTime(peak*volume,t+0.006);
-  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  o.connect(g).connect(c.destination);
-  o.start(t); o.stop(t+dur+0.05);
+  const c=ac(),t=c.currentTime+start;const o=c.createOscillator(),g=c.createGain();
+  o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(peak*volume,t+0.006);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(c.destination);o.start(t);o.stop(t+dur+0.05);
 }
-
-const SOUNDS = {
-  classic:{ label:'กริ๊งๆ คลาสสิก', em:'🔔', play(){
-      [1318,2637,3960].forEach((f,i)=>tone(f,0,1.2,'sine',0.35/(i+1)));
-      [1318,2637,3960].forEach((f,i)=>tone(f,0.18,1.1,'sine',0.30/(i+1)));
-  }},
-  single:{ label:'ติ๊ง เดี่ยว', em:'🛎️', play(){
-      [1568,3136,4700].forEach((f,i)=>tone(f,0,1.6,'sine',0.4/(i+1)));
-  }},
-  gong:{ label:'ฆ้อง ทุ้ม', em:'🥁', play(){
-      [110,164,220,277].forEach((f,i)=>tone(f,0,2.6,'sine',0.4/(i*0.6+1)));
-      tone(330,0,2.2,'triangle',0.12);
-  }},
-  digital:{ label:'ดิจิทัล บี๊บ', em:'📟', play(){
-      tone(880,0,0.12,'square',0.22); tone(880,0.16,0.12,'square',0.22); tone(1320,0.32,0.18,'square',0.22);
-  }},
-  bicycle:{ label:'กระดิ่งจักรยาน', em:'🚲', play(){
-      for(let i=0;i<8;i++){ tone(i%2?2093:2637,i*0.055,0.09,'sine',0.28); }
-  }},
-  alarm:{ label:'ออด โรงเรียน', em:'⏰', play(){
-      for(let i=0;i<6;i++){ tone(1046,i*0.14,0.1,'sawtooth',0.16); tone(1318,i*0.14,0.1,'sawtooth',0.14); }
-  }},
+const SOUNDS={
+  classic:{label:'กริ๊งๆ คลาสสิก',em:'🔔',vib:[0,90,60,90],play(){[1318,2637,3960].forEach((f,i)=>tone(f,0,1.2,'sine',0.35/(i+1)));[1318,2637,3960].forEach((f,i)=>tone(f,0.18,1.1,'sine',0.30/(i+1)));}},
+  single:{label:'ติ๊ง เดี่ยว',em:'🛎️',vib:[0,140],play(){[1568,3136,4700].forEach((f,i)=>tone(f,0,1.6,'sine',0.4/(i+1)));}},
+  gong:{label:'ฆ้อง ทุ้ม',em:'🥁',vib:[0,300],play(){[110,164,220,277].forEach((f,i)=>tone(f,0,2.6,'sine',0.4/(i*0.6+1)));tone(330,0,2.2,'triangle',0.12);}},
+  digital:{label:'ดิจิทัล บี๊บ',em:'📟',vib:[0,60,40,60,40,80],play(){tone(880,0,0.12,'square',0.22);tone(880,0.16,0.12,'square',0.22);tone(1320,0.32,0.18,'square',0.22);}},
+  bicycle:{label:'กระดิ่งจักรยาน',em:'🚲',vib:[0,40,30,40,30,40,30,40],play(){for(let i=0;i<8;i++)tone(i%2?2093:2637,i*0.055,0.09,'sine',0.28);}},
+  alarm:{label:'ออด โรงเรียน',em:'⏰',vib:[0,80,60,80,60,80,60,80],play(){for(let i=0;i<6;i++){tone(1046,i*0.14,0.1,'sawtooth',0.16);tone(1318,i*0.14,0.1,'sawtooth',0.14);}}},
 };
-let current = 'classic';
-
-/* build sound buttons */
-const soundsEl = document.getElementById('sounds');
+let current='classic';
+const soundsEl=document.getElementById('sounds');
 Object.entries(SOUNDS).forEach(([key,s])=>{
-  const b=document.createElement('div');
-  b.className='snd'+(key===current?' active':'');
+  const b=document.createElement('div');b.className='snd'+(key===current?' active':'');
   b.innerHTML=`<span class="em">${s.em}</span>${s.label}`;
-  b.onclick=()=>{
-    current=key;
-    document.querySelectorAll('.snd').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    SOUNDS[key].play(); // preview
-  };
+  b.onclick=()=>{current=key;document.querySelectorAll('.snd').forEach(x=>x.classList.remove('active'));b.classList.add('active');SOUNDS[key].play();};
   soundsEl.appendChild(b);
 });
 document.getElementById('vol').addEventListener('input',e=>volume=e.target.value/100);
 
-/* ============ BELL PRESS ============ */
-const bell=document.getElementById('bell'), zone=document.getElementById('zone'), cEl=document.getElementById('c');
+/* ============ TOGGLES ============ */
+let flashOn=true, vibOn=true;
+const tgFlash=document.getElementById('tgFlash'), tgVib=document.getElementById('tgVib'), tgTorch=document.getElementById('tgTorch');
+tgFlash.onclick=()=>{flashOn=!flashOn;tgFlash.classList.toggle('on',flashOn);};
+tgVib.onclick=()=>{vibOn=!vibOn;tgVib.classList.toggle('on',vibOn);};
+
+const flashEl=document.getElementById('flash');
+function doFlash(){ if(!flashOn) return; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+function doVibrate(p){ if(vibOn && navigator.vibrate) navigator.vibrate(p||[0,100,60,100]); }
+
+/* ---- CAMERA TORCH (flashlight) ---- */
+let torchOn=false, torchTrack=null, torchBusy=false;
+async function enableTorch(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return {ok:false,reason:'unsupported'};
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const track=stream.getVideoTracks()[0];
+    const caps=track.getCapabilities?track.getCapabilities():{};
+    if(!caps.torch){ track.stop(); return {ok:false,reason:'no-torch'}; }
+    torchTrack=track; return {ok:true};
+  }catch(e){ return {ok:false,reason:'denied'}; }
+}
+async function setTorch(on){ if(!torchTrack) return; try{ await torchTrack.applyConstraints({advanced:[{torch:on}]}); }catch(e){} }
+async function blinkTorch(){
+  if(!torchOn || !torchTrack || torchBusy) return;
+  torchBusy=true;
+  for(let i=0;i<3;i++){ await setTorch(true); await sleep(120); await setTorch(false); await sleep(90); }
+  torchBusy=false;
+}
+tgTorch.onclick=async ()=>{
+  if(!torchOn){
+    tgTorch.querySelector('span').textContent='🔦 กำลังขอสิทธิ์กล้อง…';
+    const r=await enableTorch();
+    if(r.ok){ torchOn=true; tgTorch.classList.add('on'); tgTorch.querySelector('span').textContent='🔦 ไฟแฟลชกล้อง'; }
+    else{
+      const msg=r.reason==='no-torch'?'เครื่อง/เบราว์เซอร์นี้ไม่มีไฟแฟลชที่คุมได้':r.reason==='denied'?'ต้องกด Allow ให้สิทธิ์กล้องก่อน':'เบราว์เซอร์นี้ไม่รองรับ (เช่น iPhone)';
+      tgTorch.querySelector('span').textContent='🔦 ไฟแฟลชกล้อง — '+msg;
+    }
+  }else{
+    torchOn=false; tgTorch.classList.remove('on'); tgTorch.querySelector('span').textContent='🔦 ไฟแฟลชกล้อง';
+    if(torchTrack){ await setTorch(false); torchTrack.stop(); torchTrack=null; }
+  }
+};
+
+/* ============ RING ============ */
+const bell=document.getElementById('bell'),zone=document.getElementById('zone'),cEl=document.getElementById('c');
 let count=0;
-
-function playSound(key){ (SOUNDS[key]||SOUNDS.classic).play(); }
-function animate(){
+function triggerLocal(key){
+  const s=SOUNDS[key]||SOUNDS.classic;
+  s.play(); doFlash(); doVibrate(s.vib); blinkTorch();
   bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring');
-  const w=document.createElement('div'); w.className='wave'; zone.appendChild(w);
-  setTimeout(()=>w.remove(),700);
-}
-function ring(key,local=true){
-  playSound(key); animate();
+  const w=document.createElement('div'); w.className='wave'; zone.appendChild(w); setTimeout(()=>w.remove(),700);
   count++; cEl.textContent=count;
-  if(local) publishRing(key);
 }
-bell.addEventListener('click',()=>ring(current));
-bell.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();ring(current);} });
+function onPress(){
+  ac();
+  if(client && client.connected){ client.publish(topic('ring'), JSON.stringify({id:myId,sound:current})); }
+  else{ triggerLocal(current); }
+}
+bell.addEventListener('click',onPress);
+bell.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();onPress();} });
 
-/* ============ MULTI-DEVICE SYNC (MQTT over WSS) ============ */
+/* ============ MULTI-DEVICE SYNC ============ */
 const BROKER='wss://broker.emqx.io:8084/mqtt';
 let client=null, room=null;
-const myId = Math.random().toString(36).slice(2,10);
-const peers = new Map(); // id -> lastSeen
-let hbTimer=null, pruneTimer=null;
-
-const dot=document.getElementById('dot'), statusText=document.getElementById('statusText');
-const devWrap=document.getElementById('devWrap'), devCount=document.getElementById('devCount');
-const joinBtn=document.getElementById('join'), roomInput=document.getElementById('room');
-
-// prefill a random room code
-roomInput.value = Math.random().toString(36).slice(2,6).toUpperCase();
-
+const myId=Math.random().toString(36).slice(2,10);
+const peers=new Map(); let hbTimer=null, pruneTimer=null;
+const dot=document.getElementById('dot'),statusText=document.getElementById('statusText');
+const devWrap=document.getElementById('devWrap'),devCount=document.getElementById('devCount');
+const joinBtn=document.getElementById('join'),roomInput=document.getElementById('room');
+roomInput.value=Math.random().toString(36).slice(2,6).toUpperCase();
 function topic(sub){ return `krring/v1/${room}/${sub}`; }
-function updateCount(){ const n=peers.size+1; devCount.textContent=n; }
-
-function setStatus(state,text){
-  dot.className='dot'+(state==='on'?' on':state==='connecting'?' connecting':'');
-  statusText.textContent=text;
-}
-
-function publishRing(key){
-  if(client && client.connected){
-    client.publish(topic('ring'), JSON.stringify({id:myId,sound:key}));
-  }
-}
-
+function updateCount(){ devCount.textContent=peers.size+1; }
+function setStatus(state,text){ dot.className='dot'+(state==='on'?' on':state==='connecting'?' connecting':''); statusText.textContent=text; }
 function leave(){
-  if(client){
-    try{ client.publish(topic('bye'),JSON.stringify({id:myId})); }catch(e){}
-    client.end(true);
-  }
-  client=null; peers.clear();
-  clearInterval(hbTimer); clearInterval(pruneTimer);
-  devWrap.style.display='none';
-  setStatus('off','ยังไม่ได้เข้าห้อง');
-  joinBtn.textContent='เข้าห้อง'; joinBtn.classList.remove('ghost');
-  roomInput.disabled=false;
+  if(client){ try{client.publish(topic('bye'),JSON.stringify({id:myId}));}catch(e){} client.end(true); }
+  client=null; peers.clear(); clearInterval(hbTimer); clearInterval(pruneTimer);
+  devWrap.style.display='none'; setStatus('off','ยังไม่ได้เข้าห้อง');
+  joinBtn.textContent='เข้าห้อง'; joinBtn.classList.remove('ghost'); roomInput.disabled=false;
 }
-
 function join(){
-  ac(); // unlock audio on this gesture
-  room = (roomInput.value||'').trim().toUpperCase();
-  if(!room){ roomInput.focus(); return; }
-  setStatus('connecting','กำลังเชื่อมต่อ…');
-  joinBtn.textContent='…';
-
-  client = mqtt.connect(BROKER,{ clientId:'krring_'+myId, keepalive:30, reconnectPeriod:3000, connectTimeout:8000 });
-
+  ac(); room=(roomInput.value||'').trim().toUpperCase(); if(!room){ roomInput.focus(); return; }
+  setStatus('connecting','กำลังเชื่อมต่อ…'); joinBtn.textContent='…';
+  client=mqtt.connect(BROKER,{clientId:'krring_'+myId,keepalive:30,reconnectPeriod:3000,connectTimeout:8000});
   client.on('connect',()=>{
-    client.subscribe(topic('ring'));
-    client.subscribe(topic('hb'));
-    client.subscribe(topic('bye'));
-    setStatus('on','เข้าห้อง "'+room+'" แล้ว');
-    devWrap.style.display='inline'; updateCount();
+    client.subscribe(topic('ring')); client.subscribe(topic('hb')); client.subscribe(topic('bye'));
+    setStatus('on','เข้าห้อง "'+room+'" แล้ว'); devWrap.style.display='inline'; updateCount();
     joinBtn.textContent='ออก'; joinBtn.classList.add('ghost'); roomInput.disabled=true;
-    // heartbeat presence
     const beat=()=>client.connected&&client.publish(topic('hb'),JSON.stringify({id:myId}));
     beat(); hbTimer=setInterval(beat,3000);
-    pruneTimer=setInterval(()=>{
-      const now=Date.now(); let changed=false;
-      for(const [id,t] of peers){ if(now-t>8000){ peers.delete(id); changed=true; } }
-      if(changed) updateCount();
-    },2000);
+    pruneTimer=setInterval(()=>{const now=Date.now();let ch=false;for(const[id,t]of peers){if(now-t>8000){peers.delete(id);ch=true;}}if(ch)updateCount();},2000);
   });
-
   client.on('message',(t,payload)=>{
-    let msg={}; try{ msg=JSON.parse(payload.toString()); }catch(e){ return; }
-    if(msg.id===myId) return; // ignore self
-    if(t===topic('ring')){
-      ring(msg.sound||'classic', false);   // ring without re-publishing
-      document.getElementById('card').classList.remove('flash');
-      void document.getElementById('card').offsetWidth;
-      document.getElementById('card').classList.add('flash');
-    } else if(t===topic('hb')){
-      const isNew=!peers.has(msg.id);
-      peers.set(msg.id,Date.now());
-      if(isNew){ updateCount(); client.publish(topic('hb'),JSON.stringify({id:myId})); } // reply so new device sees us
-    } else if(t===topic('bye')){
-      if(peers.delete(msg.id)) updateCount();
-    }
+    let msg={}; try{msg=JSON.parse(payload.toString());}catch(e){return;}
+    if(t===topic('ring')){ triggerLocal(msg.sound||'classic'); return; }
+    if(msg.id===myId) return;
+    if(t===topic('hb')){ const isNew=!peers.has(msg.id); peers.set(msg.id,Date.now()); if(isNew){updateCount();client.publish(topic('hb'),JSON.stringify({id:myId}));} }
+    else if(t===topic('bye')){ if(peers.delete(msg.id)) updateCount(); }
   });
-
   client.on('reconnect',()=>setStatus('connecting','กำลังเชื่อมต่อใหม่…'));
   client.on('error',()=>setStatus('off','เชื่อมต่อไม่ได้ — ลองใหม่'));
   client.on('close',()=>{ if(room) setStatus('connecting','หลุด — กำลังต่อใหม่…'); });
 }
-
 joinBtn.addEventListener('click',()=>{ if(client) leave(); else join(); });
 roomInput.addEventListener('keydown',e=>{ if(e.key==='Enter') joinBtn.click(); });
-window.addEventListener('beforeunload',()=>{ if(client&&client.connected){ try{client.publish(topic('bye'),JSON.stringify({id:myId}));}catch(e){} } });
+window.addEventListener('beforeunload',()=>{ if(client&&client.connected){try{client.publish(topic('bye'),JSON.stringify({id:myId}));}catch(e){}} });
 </script>
 </body>
 </html>
