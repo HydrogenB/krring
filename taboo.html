@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>คำต้องห้าม 🤫 — แนบหน้าผากทายคำ</title>
+<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{--accent:#7c5cff;--accent2:#c15cff;--ok:#43e97b;--pass:#ff9f43;--bad:#ff5c7c;}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+    background:radial-gradient(circle at 30% 15%,#2a1b4d 0%,#1a1c2e 55%,#0d0e1a 100%);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;user-select:none;overflow:hidden;}
+
+  .card{width:100%;max-width:430px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+    border-radius:28px;padding:26px 22px 22px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center;}
+  h1{font-size:24px;font-weight:800;letter-spacing:.5px;}
+  .sub{color:rgba(255,255,255,.55);font-size:12.5px;margin-top:4px;margin-bottom:16px;line-height:1.5;}
+  .label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.45);margin:16px 0 8px;font-weight:600;text-align:left;}
+
+  .sel{width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.15);
+    background:rgba(0,0,0,.25);color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%237c5cff'><path d='M7 10L2 4h10z'/></svg>");
+    background-repeat:no-repeat;background-position:right 14px center;}
+  .sel:focus{outline:none;border-color:var(--accent);}
+  .sel option{background:#241633;color:#fff;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  .btn{padding:14px 18px;border-radius:16px;border:none;cursor:pointer;font-size:16px;font-weight:800;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;transition:.15s;white-space:nowrap;}
+  .btn:active{transform:scale(.97);}
+  .btn.ghost{background:rgba(255,255,255,.1);}
+  .btn.wide{width:100%;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .room-row{display:flex;gap:8px;}
+  .room-row input[type=text]{flex:1;padding:12px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.15);
+    background:rgba(0,0,0,.25);color:#fff;font-size:15px;letter-spacing:2px;font-weight:700;text-align:center;}
+  .room-row input:focus{outline:none;border-color:var(--accent);}
+  .status{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:rgba(255,255,255,.6);}
+  .dot{width:9px;height:9px;border-radius:50%;background:#888;transition:.3s;flex-shrink:0;}
+  .dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok);}
+  .dot.connecting{background:var(--accent);animation:pulse 1s infinite;}
+  @keyframes pulse{50%{opacity:.3;}}
+  .devices{color:var(--accent);font-weight:700;}
+  .note{font-size:11px;color:rgba(255,255,255,.35);margin-top:8px;line-height:1.5;}
+  .roleTag{display:inline-block;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:10px;}
+  .roleTag.host{background:rgba(124,92,255,.2);color:#b9a5ff;}
+  .roleTag.player{background:rgba(67,233,123,.15);color:var(--ok);}
+
+  /* FULLSCREEN GAME */
+  .full{position:fixed;inset:0;z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+  .full.show{display:flex;}
+  #countdown{background:#12081f;}
+  #countdown .cd{font-size:130px;font-weight:900;color:var(--accent);animation:pop .6s ease;}
+  @keyframes pop{from{transform:scale(.4);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+  #play{background:#1a1030;}
+  #play.correct{background:var(--ok);} #play.pass{background:var(--pass);}
+  .topbar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:16px 22px;font-weight:800;}
+  .timer{font-size:26px;} .score{font-size:16px;color:rgba(255,255,255,.85);}
+  .word{font-size:min(19vw,90px);font-weight:900;line-height:1.05;padding:0 10px;word-break:break-word;}
+  .playHint{position:absolute;bottom:22px;left:0;right:0;font-size:13px;color:rgba(255,255,255,.7);padding:0 20px;line-height:1.5;}
+  .fxword{font-size:70px;font-weight:900;}
+  /* tap zones (host only) */
+  .zones{position:absolute;inset:0;display:flex;z-index:2;}
+  .zone{flex:1;display:flex;align-items:flex-end;justify-content:center;padding-bottom:70px;font-weight:800;font-size:15px;opacity:.5;}
+  .zone.left{color:#0a3d1e;} .zone.right{color:#5a3200;}
+  .zones.hidden{display:none;}
+
+  #result{background:#14092a;overflow-y:auto;justify-content:flex-start;padding-top:40px;}
+  #result h2{font-size:24px;margin-bottom:6px;}
+  .bigscore{font-size:64px;font-weight:900;color:var(--ok);margin:4px 0;}
+  .wordlist{width:100%;max-width:380px;text-align:left;margin:14px 0;}
+  .wl-item{display:flex;justify-content:space-between;padding:9px 14px;border-radius:10px;margin-bottom:6px;font-size:15px;font-weight:600;background:rgba(255,255,255,.05);}
+  .wl-item.ok{color:var(--ok);} .wl-item.no{color:var(--pass);}
+
+  /* QR modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:10000;padding:24px;}
+  .modal.show{display:flex;}
+  .modal-card{background:#1c1530;border:1px solid rgba(255,255,255,.15);border-radius:24px;padding:24px;text-align:center;max-width:320px;width:100%;}
+  .modal-card h3{font-size:18px;margin-bottom:4px;}
+  .roomcode{font-size:30px;font-weight:800;letter-spacing:4px;color:var(--accent);margin:6px 0 16px;}
+  #qrBox{background:#fff;padding:14px;border-radius:16px;display:inline-block;line-height:0;}
+  #qrBox img,#qrBox canvas{display:block;}
+  .link{font-size:11px;color:rgba(255,255,255,.5);margin:14px 0;word-break:break-all;}
+</style>
+</head>
+<body>
+<!-- LOBBY -->
+<div class="card" id="lobby">
+  <h1>คำต้องห้าม 🤫</h1>
+  <div class="sub">แนบมือถือไว้หน้าผาก · เพื่อนใบ้คำ · คนถือทายให้ได้เยอะที่สุด!</div>
+  <div id="roleTag"></div>
+
+  <div class="label">🗂️ หมวดคำ</div>
+  <select id="catSel" class="sel"></select>
+
+  <div class="label">⏱️ เวลาต่อรอบ</div>
+  <select id="durSel" class="sel">
+    <option value="30">30 วินาที</option>
+    <option value="60" selected>60 วินาที</option>
+    <option value="90">90 วินาที</option>
+    <option value="120">120 วินาที</option>
+  </select>
+
+  <div class="label">📡 เล่นด้วยกันหลายเครื่อง (ไม่บังคับ)</div>
+  <div class="room-row">
+    <input type="text" id="room" maxlength="8" placeholder="รหัสห้อง" autocomplete="off" autocapitalize="characters">
+    <button class="btn ghost" id="join" style="font-size:14px;">สร้างห้อง</button>
+  </div>
+  <button class="btn ghost wide" id="qrBtn" style="display:none;margin-top:8px;font-size:14px;">📷 QR ชวนเพื่อนเข้าห้อง</button>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">เล่นเครื่องเดียวได้เลย</span>
+    <span id="devWrap" style="margin-left:auto;display:none;">📱 <span class="devices" id="devCount">1</span></span></div>
+  <div class="note" id="capNote"></div>
+
+  <button class="btn wide" id="startBtn" style="margin-top:18px;">▶️ เริ่มเกม</button>
+  <div class="note" id="waitNote" style="display:none;">⏳ รอโฮสต์กดเริ่มเกม…</div>
+</div>
+
+<!-- COUNTDOWN -->
+<div class="full" id="countdown"><div class="cd" id="cdNum">3</div></div>
+
+<!-- PLAY -->
+<div class="full" id="play">
+  <div class="topbar"><span class="timer" id="timer">60</span><span class="score" id="scoreLbl">✅ 0 · ⏭️ 0</span></div>
+  <div class="word" id="wordEl">พร้อม!</div>
+  <div class="zones" id="zones">
+    <div class="zone left">✅ แตะ = ถูก</div>
+    <div class="zone right">⏭️ แตะ = ผ่าน</div>
+  </div>
+  <div class="playHint" id="playHint"></div>
+</div>
+
+<!-- RESULT -->
+<div class="full" id="result">
+  <h2>หมดเวลา! 🏁</h2>
+  <div class="bigscore" id="bigScore">0</div>
+  <div style="color:rgba(255,255,255,.6);font-size:14px;">ทายถูก (คะแนน)</div>
+  <div class="wordlist" id="wordList"></div>
+  <button class="btn wide" id="againBtn" style="max-width:380px;">🔁 เล่นอีกครั้ง</button>
+</div>
+
+<!-- QR modal -->
+<div class="modal" id="qrModal">
+  <div class="modal-card">
+    <h3>ชวนเข้าห้อง</h3>
+    <div class="roomcode" id="qrRoomCode"></div>
+    <div id="qrBox"></div>
+    <div class="link" id="qrLink"></div>
+    <button class="btn wide" id="copyLink">📋 คัดลอกลิงก์</button>
+    <button class="btn ghost wide" id="closeQr" style="margin-top:8px;">ปิด</button>
+  </div>
+</div>
+
+<script>
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ============ WORD BANK ============ */
+const WORDS={
+  animal:{name:'🐘 สัตว์',w:['ช้าง','เสือ','สิงโต','ยีราฟ','ม้าลาย','ลิง','จระเข้','งูเห่า','กบ','นกยูง','เพนกวิน','แพนด้า','กระต่าย','เต่า','ปลาวาฬ','ปลาหมึก','แมงมุม','ผีเสื้อ','ค้างคาว','ฮิปโป','แรด','จิงโจ้','นกฮูก','ไดโนเสาร์','ปลาดาว','เม่น','หมาป่า','นกกระจอกเทศ']},
+  food:{name:'🍜 อาหารไทย',w:['ต้มยำกุ้ง','ผัดไทย','ส้มตำ','ข้าวเหนียวมะม่วง','แกงเขียวหวาน','ผัดกะเพรา','ข้าวมันไก่','ก๋วยเตี๋ยวเรือ','หมูปิ้ง','ไข่เจียว','ลาบ','น้ำพริกปลาทู','ทอดมัน','ข้าวซอย','ขนมครก','โรตี','ชาเย็น','ปาท่องโก๋','ยำวุ้นเส้น','ข้าวผัด','ก๋วยเตี๋ยวต้มยำ','หมูกระทะ','ข้าวขาหมู','ไก่ทอด']},
+  fruit:{name:'🍎 ผลไม้',w:['ทุเรียน','มังคุด','เงาะ','ลำไย','มะม่วง','สับปะรด','แตงโม','กล้วย','มะละกอ','ส้มโอ','ลิ้นจี่','ขนุน','แก้วมังกร','ฝรั่ง','ชมพู่','องุ่น','สตรอเบอร์รี่','ลองกอง','มะพร้าว','น้อยหน่า','ทับทิม','กระท้อน']},
+  thing:{name:'📦 สิ่งของ',w:['ตู้เย็น','โทรทัศน์','พัดลม','ร่ม','แปรงสีฟัน','นาฬิกา','กระเป๋า','รองเท้า','แว่นตา','กุญแจ','ไฟฉาย','กรรไกร','ช้อน','โทรศัพท์','หมอน','กระจก','เก้าอี้','ปากกา','ไม้กวาด','เตารีด','ร่มกันแดด','กระติกน้ำ','ที่เปิดขวด']},
+  job:{name:'👷 อาชีพ',w:['หมอ','พยาบาล','ครู','ตำรวจ','นักดับเพลิง','ทหาร','นักบิน','คนขับแท็กซี่','เชฟ','ช่างตัดผม','นักร้อง','นักฟุตบอล','ชาวนา','หมอฟัน','บุรุษไปรษณีย์','นักข่าว','ช่างภาพ','วิศวกร','ทนายความ','บาริสต้า','ช่างไฟ','นักบินอวกาศ']},
+  sport:{name:'⚽ กีฬา',w:['ฟุตบอล','บาสเกตบอล','ว่ายน้ำ','วิ่ง','เทนนิส','แบดมินตัน','มวย','ปิงปอง','วอลเลย์บอล','กอล์ฟ','โยคะ','ปีนเขา','สเก็ต','ยกน้ำหนัก','ตกปลา','ปั่นจักรยาน','เซิร์ฟ','ดำน้ำ','ยิงธนู','ฟันดาบ','เต้นแอโรบิก','วิ่งมาราธอน']},
+  place:{name:'📍 สถานที่',w:['โรงเรียน','โรงพยาบาล','ตลาด','สนามบิน','ชายหาด','ภูเขา','น้ำตก','วัด','ห้างสรรพสินค้า','สวนสัตว์','โรงหนัง','ร้านกาแฟ','สถานีรถไฟ','สวนสนุก','ทะเล','ป่า','สะพาน','ปั๊มน้ำมัน','ธนาคาร','ห้องสมุด','สนามเด็กเล่น','พิพิธภัณฑ์']},
+  action:{name:'🏃 กริยา/ท่าทาง',w:['วิ่ง','กระโดด','ว่ายน้ำ','เต้น','ร้องไห้','หัวเราะ','นอนหลับ','กิน','ปรบมือ','โบกมือ','ถ่ายรูป','ขับรถ','วาดรูป','ร้องเพลง','เดินขึ้นบันได','กอด','จาม','หาว','ทำอาหาร','เป่าเทียน','แปรงฟัน','ตกปลา']},
+};
+const catSel=document.getElementById('catSel');
+const mixOpt=document.createElement('option'); mixOpt.value='mix'; mixOpt.textContent='🎲 รวมทุกหมวด'; catSel.appendChild(mixOpt);
+Object.entries(WORDS).forEach(([k,v])=>{ const o=document.createElement('option'); o.value=k; o.textContent=v.name; catSel.appendChild(o); });
+catSel.value='mix';
+
+function buildDeck(cat){
+  let arr = cat==='mix' ? Object.values(WORDS).flatMap(v=>v.w) : WORDS[cat].w.slice();
+  for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+  return arr;
+}
+
+/* ============ SOUND ============ */
+let ctx;
+function ac(){ if(!ctx) ctx=new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); return ctx; }
+function tone(f,s,d,type='sine',peak=0.3){ const c=ac(),t=c.currentTime+s;const o=c.createOscillator(),g=c.createGain();
+  o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g).connect(c.destination);o.start(t);o.stop(t+d+0.05);}
+const SFX={
+  correct(){tone(880,0,0.12,'sine',0.35);tone(1320,0.1,0.2,'sine',0.35);},
+  pass(){tone(300,0,0.25,'sawtooth',0.25);},
+  tick(){tone(1200,0,0.05,'square',0.15);},
+  go(){[523,659,784,1047].forEach((f,i)=>tone(f,i*0.12,0.15,'sine',0.3));},
+  end(){for(let i=0;i<4;i++){tone(700,i*0.18,0.14,'sawtooth',0.25);tone(500,i*0.18,0.14,'sawtooth',0.2);}},
+};
+function vib(p){ if(navigator.vibrate) navigator.vibrate(p); }
+
+/* ============ GAME STATE ============ */
+let game={phase:'lobby',word:'',timeLeft:0,cCount:0,pCount:0};
+let deck=[], idx=0, correctList=[], passList=[], duration=60;
+let timer=null, inputLock=false;
+let isHost=true; // creator/single-device = host (the guesser)
+
+const $=id=>document.getElementById(id);
+const screens={lobby:$('lobby'),countdown:$('countdown'),play:$('play'),result:$('result')};
+function show(name){
+  $('lobby').style.display = name==='lobby'?'block':'none';
+  ['countdown','play','result'].forEach(n=>screens[n].classList.toggle('show',n===name));
+}
+
+/* ---- HOST: run the game ---- */
+function hostStart(){
+  ac();
+  duration=parseInt($('durSel').value,10);
+  deck=buildDeck(catSel.value); idx=0; correctList=[]; passList=[];
+  runCountdown(3);
+}
+function runCountdown(n){
+  game.phase='countdown'; pub({t:'cd',n});
+  $('cdNum').textContent=n; show('countdown'); SFX.tick();
+  if(n>1){ setTimeout(()=>runCountdown(n-1),900); }
+  else { setTimeout(beginPlay,900); }
+}
+function beginPlay(){
+  SFX.go();
+  game.phase='playing'; game.timeLeft=duration; game.cCount=0; game.pCount=0;
+  setWord(deck[idx]); show('play'); $('zones').classList.toggle('hidden',!isHost);
+  $('playHint').textContent = isHost ? '📱 เอาจอแนบหน้าผาก · แตะซ้าย = ถูก · แตะขวา = ผ่าน' : '📣 ดูคำแล้วใบ้ให้เพื่อนทาย! ห้ามพูดคำตรงๆ นะ';
+  updateHUD(); pubState();
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    game.timeLeft--; updateHUD(); pubState();
+    if(game.timeLeft<=5 && game.timeLeft>0) SFX.tick();
+    if(game.timeLeft<=0) endGame();
+  },1000);
+}
+function setWord(w){ game.word=w; $('wordEl').textContent=w; }
+function updateHUD(){ $('timer').textContent=game.timeLeft; $('scoreLbl').textContent='✅ '+game.cCount+' · ⏭️ '+game.pCount; }
+function nextWord(){ idx=(idx+1)%deck.length; setWord(deck[idx]); pubState(); }
+function flash(kind,txt){ const p=$('play'); p.classList.add(kind); const prev=$('wordEl').textContent;
+  $('wordEl').innerHTML='<span class="fxword">'+txt+'</span>';
+  setTimeout(()=>{ p.classList.remove(kind); },600); }
+function doCorrect(){ if(!isHost||inputLock||game.phase!=='playing') return; inputLock=true;
+  correctList.push(game.word); game.cCount=correctList.length; SFX.correct(); vib(60); flash('correct','ถูก!'); updateHUD();
+  setTimeout(()=>{ nextWord(); inputLock=false; },600); }
+function doPass(){ if(!isHost||inputLock||game.phase!=='playing') return; inputLock=true;
+  passList.push(game.word); game.pCount=passList.length; SFX.pass(); vib([0,120]); flash('pass','ผ่าน'); updateHUD();
+  setTimeout(()=>{ nextWord(); inputLock=false; },600); }
+function endGame(){ clearInterval(timer); game.phase='result'; SFX.end(); vib([0,200,80,200]);
+  renderResult(correctList,passList); show('result'); pub({t:'result',c:correctList,p:passList}); }
+function renderResult(c,p){
+  $('bigScore').textContent=c.length;
+  const wl=$('wordList'); wl.innerHTML='';
+  c.forEach(w=>{ const d=document.createElement('div'); d.className='wl-item ok'; d.innerHTML='<span>'+w+'</span><span>✅</span>'; wl.appendChild(d); });
+  p.forEach(w=>{ const d=document.createElement('div'); d.className='wl-item no'; d.innerHTML='<span>'+w+'</span><span>⏭️</span>'; wl.appendChild(d); });
+  if(c.length+p.length===0){ wl.innerHTML='<div class="wl-item">ยังไม่มีคำ 😅</div>'; }
+}
+function backToLobby(){ game.phase='lobby'; show('lobby'); pub({t:'lobby'}); }
+
+/* tap zones (host) */
+$('zones').addEventListener('click',e=>{
+  if(!isHost) return;
+  const x=e.clientX, mid=window.innerWidth/2;
+  if(x<mid) doCorrect(); else doPass();
+});
+
+/* buttons */
+$('startBtn').addEventListener('click',()=>{ if(isHost) hostStart(); });
+$('againBtn').addEventListener('click',()=>{ if(isHost) hostStart(); else backToLobby(); });
+
+/* ---- PLAYER: mirror host state ---- */
+function applyRemote(m){
+  if(m.t==='cd'){ game.phase='countdown'; $('cdNum').textContent=m.n; show('countdown'); ac()&&SFX.tick(); }
+  else if(m.t==='state'){
+    game.phase='playing';
+    if(!screens.play.classList.contains('show')){ show('play'); $('zones').classList.add('hidden');
+      $('playHint').textContent='📣 ดูคำแล้วใบ้ให้เพื่อนทาย! ห้ามพูดคำตรงๆ นะ'; }
+    $('wordEl').textContent=m.w; $('timer').textContent=m.tl; $('scoreLbl').textContent='✅ '+m.c+' · ⏭️ '+m.p;
+  }
+  else if(m.t==='result'){ game.phase='result'; renderResult(m.c,m.p); show('result'); }
+  else if(m.t==='lobby'){ game.phase='lobby'; show('lobby'); }
+}
+function pub(obj){ if(client&&client.connected&&room) client.publish(topic('state'),JSON.stringify(Object.assign({from:myId},obj))); }
+function pubState(){ pub({t:'state',w:game.word,tl:game.timeLeft,c:game.cCount,p:game.pCount}); }
+
+/* ============ ROOM SYNC (MQTT) ============ */
+const BROKER='wss://broker.emqx.io:8084/mqtt';
+let client=null, room=null;
+const myId=Math.random().toString(36).slice(2,10);
+const peers=new Map(); let hbTimer=null, pruneTimer=null;
+const joinBtn=$('join'),roomInput=$('room'),qrBtn=$('qrBtn'),dot=$('dot'),statusText=$('statusText'),devWrap=$('devWrap'),devCount=$('devCount');
+
+function topic(sub){ return `taboo/v1/${room}/${sub}`; }
+function updateCount(){ devCount.textContent=peers.size+1; }
+function setStatus(state,text){ dot.className='dot'+(state==='on'?' on':state==='connecting'?' connecting':''); statusText.textContent=text; }
+function applyRole(){
+  const t=$('roleTag');
+  if(isHost){ t.className='roleTag host'; t.textContent='👑 คุณคือ "คนถือทาย" (โฮสต์)'; $('startBtn').style.display=''; $('waitNote').style.display='none'; }
+  else{ t.className='roleTag player'; t.textContent='📣 คุณคือ "ผู้ให้คำใบ้"'; $('startBtn').style.display='none'; $('waitNote').style.display=''; }
+}
+
+function leave(){
+  if(client){ try{client.publish(topic('bye'),JSON.stringify({id:myId}));}catch(e){} client.end(true); }
+  client=null; peers.clear(); clearInterval(hbTimer); clearInterval(pruneTimer);
+  devWrap.style.display='none'; qrBtn.style.display='none'; setStatus('off','เล่นเครื่องเดียวได้เลย');
+  joinBtn.textContent='สร้างห้อง'; roomInput.disabled=false; isHost=true; applyRole();
+}
+function connectRoom(asHost){
+  ac(); room=(roomInput.value||'').trim().toUpperCase(); if(!room){ roomInput.focus(); return; }
+  isHost=asHost; applyRole();
+  setStatus('connecting','กำลังเชื่อมต่อ…'); joinBtn.textContent='…';
+  client=mqtt.connect(BROKER,{clientId:'taboo_'+myId,keepalive:20,reconnectPeriod:2000,connectTimeout:8000,clean:true});
+  client.on('connect',()=>{
+    client.subscribe(topic('state')); client.subscribe(topic('hb')); client.subscribe(topic('bye')); client.subscribe(topic('hello'));
+    devWrap.style.display='inline'; qrBtn.style.display='block'; updateCount();
+    joinBtn.textContent='ออกห้อง'; roomInput.disabled=true;
+    setStatus('on','ห้อง "'+room+'" · '+(isHost?'โฮสต์':'ผู้เล่น'));
+    if(!isHost) client.publish(topic('hello'),JSON.stringify({id:myId})); // ขอ state ปัจจุบัน
+    const beat=()=>client.connected&&client.publish(topic('hb'),JSON.stringify({id:myId}));
+    beat(); clearInterval(hbTimer); hbTimer=setInterval(beat,3000);
+    clearInterval(pruneTimer);
+    pruneTimer=setInterval(()=>{const now=Date.now();let ch=false;for(const[id,t]of peers){if(now-t>9000){peers.delete(id);ch=true;}}if(ch)updateCount();},2000);
+  });
+  client.on('message',(t,payload)=>{
+    let m={}; try{m=JSON.parse(payload.toString());}catch(e){return;}
+    if(t===topic('state')){ if(m.from===myId) return; if(!isHost) applyRemote(m); return; }
+    if(t===topic('hello')){ if(isHost && game.phase!=='lobby'){ if(game.phase==='playing') pubState(); else if(game.phase==='result') pub({t:'result',c:correctList,p:passList}); } peers.set(m.id,Date.now()); updateCount(); return; }
+    if(m.id===myId) return;
+    if(t===topic('hb')){ const isNew=!peers.has(m.id); peers.set(m.id,Date.now()); if(isNew){updateCount();client.publish(topic('hb'),JSON.stringify({id:myId}));} }
+    else if(t===topic('bye')){ if(peers.delete(m.id)) updateCount(); }
+  });
+  client.on('reconnect',()=>setStatus('connecting','กำลังเชื่อมต่อใหม่…'));
+  client.on('error',()=>setStatus('connecting','เชื่อมต่อไม่ได้ · ลองใหม่…'));
+  client.on('close',()=>{ if(room) setStatus('connecting','หลุด · กำลังต่อใหม่…'); });
+}
+joinBtn.addEventListener('click',()=>{ if(client) leave(); else connectRoom(true); });
+roomInput.addEventListener('keydown',e=>{ if(e.key==='Enter') joinBtn.click(); });
+
+/* reconnect after lock/background */
+function kick(){ if(ctx&&ctx.state==='suspended') ctx.resume();
+  if(room&&client){ if(!client.connected){try{client.reconnect();}catch(e){}} else {try{client.publish(topic('hb'),JSON.stringify({id:myId}));}catch(e){}} } }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') kick(); });
+window.addEventListener('focus',kick); window.addEventListener('online',kick); window.addEventListener('pageshow',kick);
+window.addEventListener('beforeunload',()=>{ if(client&&client.connected){try{client.publish(topic('bye'),JSON.stringify({id:myId}));}catch(e){}} });
+
+/* ============ QR ============ */
+const qrModal=$('qrModal');
+function shareLink(){ return location.origin+location.pathname+'?room='+encodeURIComponent(room); }
+qrBtn.addEventListener('click',()=>{ const box=$('qrBox'); box.innerHTML=''; $('qrRoomCode').textContent=room;
+  const link=shareLink(); $('qrLink').textContent=link;
+  new QRCode(box,{text:link,width:200,height:200,colorDark:'#1c1530',colorLight:'#ffffff'}); qrModal.classList.add('show'); });
+$('closeQr').addEventListener('click',()=>qrModal.classList.remove('show'));
+qrModal.addEventListener('click',e=>{ if(e.target===qrModal) qrModal.classList.remove('show'); });
+$('copyLink').addEventListener('click',async e=>{ try{ await navigator.clipboard.writeText(shareLink()); e.target.textContent='✅ คัดลอกแล้ว!'; setTimeout(()=>e.target.textContent='📋 คัดลอกลิงก์',1500);}catch(err){ e.target.textContent='คัดลอกไม่ได้'; } });
+
+/* ============ INIT ============ */
+const capNote=$('capNote');
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+capNote.textContent='💡 เกมนี้เล่นด้วยการ "แตะจอ" (ซ้าย=ถูก ขวา=ผ่าน) ทำงานทุกเครื่อง'+(isIOS?' • iPhone ไม่มีระบบสั่น':'');
+applyRole();
+
+const params=new URLSearchParams(location.search);
+const autoRoom=params.get('room');
+if(autoRoom){ roomInput.value=autoRoom.toUpperCase(); connectRoom(false); } // สแกน QR = เข้าเป็นผู้เล่น
+else{ roomInput.value=Math.random().toString(36).slice(2,6).toUpperCase(); }
+</script>
+</body>
+</html>
